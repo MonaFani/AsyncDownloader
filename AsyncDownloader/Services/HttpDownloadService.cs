@@ -11,27 +11,22 @@ namespace AsyncDownloader.Services
     public sealed class HttpDownloadService : IDownloadService
     {
         private readonly HttpClient _http;
-        private readonly IRetryPolicy _retryPolicy;
 
-
-        public HttpDownloadService(HttpClient http, IRetryPolicy retryPolicy)
+        public HttpDownloadService(HttpClient http)
         {
             _http = http ?? throw new ArgumentNullException(nameof(http));
-            _retryPolicy = retryPolicy ?? throw new ArgumentNullException(nameof(retryPolicy));
         }
-
 
         public async Task<PageContent> DownloadAsync(PageRequest request, CancellationToken ct)
         {
-            return await _retryPolicy.ExecuteAsync<PageContent>(async innerCt =>
-            {
-                using var msg = new HttpRequestMessage(HttpMethod.Get, request.Url);
-                using var resp = await _http.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead, innerCt);
-                resp.EnsureSuccessStatusCode();
-                var mediaType = resp.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
-                var bytes = await resp.Content.ReadAsByteArrayAsync(innerCt);
-                return new PageContent(request.Url, bytes, mediaType);
-            }, ct);
+
+            using var msg = new HttpRequestMessage(HttpMethod.Get, request.Url);
+            using var resp = await _http.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead, ct);
+            resp.EnsureSuccessStatusCode();
+            var mediaType = resp.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+            var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
+            return new PageContent(request.Url, bytes, mediaType);
+
         }
     }
 }
